@@ -97,10 +97,9 @@ fn main() {
 fn run() -> Result<Cow<'static, str>, Error> {
     let mut args = env::args_os();
 
-    // NOTE: I want optimal performance, control and I don't want to unlock on every write.
-    //       This is about the best way I found to do that.
-    //       So I'm locking all standard streams at the start and then pass it around throughout the program.
-    //       There might be something better.
+    // NOTE: I want optimal performance, control and I don't want to unlock on every write (which is what println and friends implicitly do).
+    //       This is about the best way I found to do that. I'm locking all standard streams at the start and then pass them around throughout the program.
+    //       There might be some better way.
     let (stdin_handle, stdout_handle, stderr_handle) = (io::stdin(), io::stdout(), io::stderr());
     let (mut stdin, mut stdout, mut stderr) = (
         stdin_handle.lock(),

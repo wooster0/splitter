@@ -58,7 +58,7 @@ pub fn split(
     // NOTE: this is one of those cases where I would like to let the error run through the
     //       logic of `From<io::Error>::from` first to be able to provide more information
     //       if for instance the permission is denied. I haven't yet found a very idiomatic way to do that
-    //       so for now all errors will result in only this error message
+    //       so for now all errors of this operation will result in only this error message
     let mut file = fs::File::open(&path_buf).map_err(|_| Error("Failed to open file.".into()))?;
 
     let file_len = file.metadata()?.len();
@@ -80,6 +80,9 @@ pub fn split(
         .map(|buffer| io::IoSliceMut::new(buffer))
         .collect::<Vec<io::IoSliceMut>>();
 
+    // This will read the file's content into a buffer until that buffer is full, then it goes on to the next buffer and so on until all buffers are filled.
+    // The buffer sizes are determined by `get_buffers` or more specifically `split_parts`.
+    // The buffer sizes are based on this `file`'s length so at the end there will be nothing left to read and all buffers will be perfectly filled.
     file.read_vectored(buffers)
         .map_err(|_| Error("Failed reading file.".into()))?;
 
@@ -148,6 +151,8 @@ pub fn split_parts(initial_part: u64, split_size: u64) -> Vec<u64> {
     parts
 }
 
+/// Generates a vector of split integers (see [`split_parts`]) based on `file_len` and `split_size` and then
+/// a `Vec::<Vec<u8>>` is made out of it where the integers are replaced with a vector of `n` amount of zeroes.
 fn get_buffers(file_len: u64, split_size: u64) -> Vec<Vec<u8>> {
     let parts = split_parts(file_len, split_size);
 
@@ -155,8 +160,6 @@ fn get_buffers(file_len: u64, split_size: u64) -> Vec<Vec<u8>> {
     for part in &parts {
         buffers.push(vec![0_u8; *part as usize]);
     }
-
-    debug_assert_eq!(buffers.len(), parts.len());
 
     buffers
 }
